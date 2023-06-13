@@ -6,11 +6,11 @@ class UrlExtractor:
         raise NotImplementedError()
 
 
-class AnchorHrefExtractor(UrlExtractor):
+class SimpleAnchorHrefExtractor(UrlExtractor):
     
     def extract_urls(self, html, first_n=-1):
 
-        a_href_regex = r'<a\s[^>]*href="([^"]*)"[^>]*>'
+        a_href_regex = r'<a\s[^>]*href="(\s*http[^"]*)"[^>]*>'
 
         matches = re.findall(a_href_regex, html)
 
