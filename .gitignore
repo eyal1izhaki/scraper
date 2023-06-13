@@ -1,5 +1,5 @@
 /venv
-/scrapted_data
+/scraped_data
 .vscode
 /htmlscraper/__pycache__
 /samples
