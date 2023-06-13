@@ -4,45 +4,56 @@ import requests
 import logging
 import os
 
-
 from .const import URL_REGEX
+from .utils import get_html_filename_from_url
 
 
 class Scraper:
 
-    def __init__(self, url, level, max_per_page, uniqueness, saved_data_path) -> None:
+    def __init__(self, url, max_depth, max_per_page, uniqueness, saved_data_path, url_extractors, ignore_ssl_verification=False) -> None:
         
         self._root_url = url
-        self._level = level
+        self._max_depth = max_depth
         self._max_per_page = max_per_page
         self._uniqueness = uniqueness
         self._saved_data_path = saved_data_path
+        self._url_extractors = url_extractors
+        self.ignore_ssl_verification = ignore_ssl_verification
 
         self._threads = []
         self._result = []
 
-    def _write_html_to_file(self, level, url):
-        path = os.path.join(self._saved_data_path, str(level), )
-        
+    def _write_html_to_file(self, html, depth, url):
+
+        path = os.path.join(self._saved_data_path, str(depth), get_html_filename_from_url(url))
+        dirname = os.path.dirname(path)
+
+        os.makedirs(dirname, exist_ok=True)
+
+        with open(path, 'wb') as html_file:
+            logging.info(f"Writing {url} to file {path}")
+            html_file.write(html)
 
     def _get_html(self, url: str) -> bytes:
 
-        response = requests.get(url)
+        response = requests.get(url, verify=self.ignore_ssl_verification)
         return response.content
 
-    def _scrape(self, url, level):
+    def _scrape(self, url, depth):
 
-        logging.info(f"Scraping {url} at level {self._level - level}")
+        logging.info(f"Scraping {url} at depth {depth}")
 
-        if level == 0:
+        if depth == self._max_depth:
             return
 
+        # TODO: Arguments order not consistent
         html = self._get_html(url)
+        self._write_html_to_file(html, depth, url)
         html_str = str(html)
 
         self._result.append(
             {
-                "level": level,
+                "depth": depth,
                 "data": html
             }
         )
@@ -52,21 +63,23 @@ class Scraper:
         for sub_url in sub_urls:
 
             thread = threading.Thread(
-                target=self._scrape, args=[sub_url, level-1])
+                target=self._scrape, args=[sub_url, depth+1])
             self._threads.append(thread)
             thread.start()
 
-    # TODO: Optimize this
-    def _extract_urls(self, html: str, first_n_occurrences):
+    def _extract_urls(self, html: str, first_n):
 
-        matches = re.findall(URL_REGEX, html)
+        urls = []
 
-        return matches[:first_n_occurrences]
+        for url_extractor in self._url_extractors:
+            urls += url_extractor().extract_urls(html, first_n)
+
+        return urls
 
     def scrape(self):
 
         main_thread = threading.Thread(target=self._scrape, args=[
-                                       self._root_url, self._level])
+                                       self._root_url, 0])
         self._threads.append(main_thread)
 
         main_thread.start()
