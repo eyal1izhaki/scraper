@@ -6,7 +6,7 @@ import time
 import asyncio
 import aiofiles
 
-from .url_extractors import SimpleAnchorHrefExtractor, RequestsHTMLLinksExtractor
+from .url_extractors import SimpleAnchorHrefExtractor
 from .utils import get_html_filename_from_url, async_get, async_write_to_file
 
 class Scraper:
@@ -67,17 +67,17 @@ class Scraper:
 
             return None, None
 
-    def _get_urls(self, html, first_n=-1):
+    def _get_urls(self, parent_url, html, first_n=-1):
         
         if self._unique_urls_only == True:
             result = []
-            urls = SimpleAnchorHrefExtractor().extract_urls(str(html))
+            urls = SimpleAnchorHrefExtractor().extract_urls(parent_url, str(html))
             
             for url in urls:
                 if url not in self._scraped_urls:
                     result.append(url)
         else:
-            result = SimpleAnchorHrefExtractor().extract_urls(str(html))
+            result = SimpleAnchorHrefExtractor().extract_urls(parent_url, str(html))
 
         return result[:first_n]
 
@@ -89,11 +89,11 @@ class Scraper:
         next_depth_htmls = []  # A list that will hold only one level for htmls in the depth
 
         url = self._root_url
-        root_html, url = await self._get_html(url)
+        root_html, root_url = await self._get_html(url)
         self._scraped_urls.append(url)
         asyncio.create_task(self._write_html_to_file(root_html, url, 0))
 
-        next_depth_htmls.append(root_html)
+        next_depth_htmls.append((root_html, root_url))
 
         depth = 1
         disk_tasks = []
@@ -101,17 +101,19 @@ class Scraper:
 
             if depth > self._scraping_depth:
                 break
+            
+            print(depth)
 
             current_depth_htmls = next_depth_htmls
             next_depth_htmls = []
 
             network_tasks = []
-            for html in current_depth_htmls:
+            for html, parent_url in current_depth_htmls:
 
                 if html is None:
                     continue
 
-                urls = self._get_urls(html, self._scraping_width)
+                urls = self._get_urls(parent_url, html, self._scraping_width)
 
                 for url in urls:
                     self._scraped_urls.append(url)
