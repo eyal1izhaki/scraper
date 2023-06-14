@@ -20,18 +20,3 @@ class SimpleAnchorHrefExtractor(UrlExtractor):
         matches = list(set(matches))
 
         return matches
-    
-class RequestsHTMLLinksExtractor(UrlExtractor):
-
-    def extract_urls(self, html):
-
-        links = list(html.absolute_links)
-
-        http_only = []
-
-        for link in links:
-            if link.startswith('http'):
-                http_only.append(link)
-            
-
-        return http_only
