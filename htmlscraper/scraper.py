@@ -11,7 +11,7 @@ from .utils import get_html_filename_from_url, async_get, async_write_to_file
 
 class Scraper:
 
-    def __init__(self, url: str, scraping_depth: int, scraping_width: int, unique_urls_only: bool, data_dir: str, ignore_ssl_verification=False, loop=None) -> None:
+    def __init__(self, url: str, scraping_depth: int, scraping_width: int, unique_urls_only: bool, data_dir: str, ignore_ssl_verification=False) -> None:
 
         self._root_url = url
         self._scraping_depth = scraping_depth
@@ -20,8 +20,6 @@ class Scraper:
 
         self._data_dir = data_dir
         self.ignore_ssl_verification = ignore_ssl_verification
-
-        self._loop = asyncio.get_event_loop()
 
         self._pages_scraped_counter = 0
         self._failed_files_saves_counter = 0
@@ -93,7 +91,7 @@ class Scraper:
         url = self._root_url
         root_html, url = await self._get_html(url)
         self._scraped_urls.append(url)
-        self._loop.create_task(self._write_html_to_file(root_html, url, 0))
+        asyncio.create_task(self._write_html_to_file(root_html, url, 0))
 
         next_depth_htmls.append(root_html)
 
@@ -129,7 +127,7 @@ class Scraper:
                 if html is None:
                     continue
 
-                disk_task = self._loop.create_task(self._write_html_to_file(html, url, depth))
+                disk_task = asyncio.create_task(self._write_html_to_file(html, url, depth))
                 disk_tasks.append(disk_task)
             
             depth += 1
