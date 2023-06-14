@@ -61,7 +61,7 @@ class Scraper:
             self._pages_scraped_counter += 1
             return html, url
 
-        except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout, requests.exceptions.TooManyRedirects, requests.exceptions.InvalidURL):
+        except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout, requests.exceptions.TooManyRedirects, requests.exceptions.InvalidURL, requests.exceptions.MissingSchema):
             logging.info(f"Failed to scrape {url}.")
             self._failed_scrapes_counter += 1
 
@@ -101,7 +101,7 @@ class Scraper:
 
             if depth > self._scraping_depth:
                 break
-            
+
             current_depth_htmls = next_depth_htmls
             next_depth_htmls = []
 
@@ -115,8 +115,8 @@ class Scraper:
 
                 for url in urls:
                     self._scraped_urls.append(url)
-
-                    network_tasks.append(self._get_html(url))
+                    network_task = asyncio.create_task(self._get_html(url))
+                    network_tasks.append(network_task)
                     logging.info(f"Scraped {url} at depth {depth}")
 
 
