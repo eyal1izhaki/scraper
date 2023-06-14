@@ -1,125 +1,134 @@
-import threading
-import re
-import requests
-import logging
 import os
-
+import logging
+import requests
+from typing import List
+from requests_html import AsyncHTMLSession
+import time
+import asyncio
+import aiofiles
+from .url_extractors import SimpleAnchorHrefExtractor
 from .utils import get_html_filename_from_url
-
 
 class Scraper:
 
-    def __init__(self, url, max_depth, max_per_page, uniqueness, saved_data_path, url_extractors, ignore_ssl_verification=False) -> None:
+    def __init__(self, url: str, scraping_depth: int, scraping_width: int, unique_urls_only: bool, data_dir: str, ignore_ssl_verification=False, loop=None) -> None:
 
         self._root_url = url
-        self._max_depth = max_depth
-        self._max_per_page = max_per_page
-        self._uniqueness = uniqueness
-        self._saved_data_path = saved_data_path
-        self._url_extractors = url_extractors
+        self._scraping_depth = scraping_depth
+        self._scraping_width = scraping_width
+        self._unique_urls_only = unique_urls_only
+
+        self._data_dir = data_dir
         self.ignore_ssl_verification = ignore_ssl_verification
 
-        self._scraped_counter = 0
-        self._failed_counter = 0
+        self._loop = asyncio.get_event_loop()
 
-        self._scraped_urls = []
+        self._pages_scraped_counter = 0
+        self._failed_files_saves_counter = 0
+        self._files_saved_counter = 0
+        self._failed_scrapes_counter = 0
 
-        self._threads = []
-        self._result = []
+        self._scraped_urls = []  # For unique urls functionality
 
-    def _write_html_to_file(self, html, depth, url):
 
-        path = os.path.join(self._saved_data_path, str(
+    def _get_html_filename(self, url: str, depth):
+
+        path = os.path.join(self._data_dir, str(
             depth), get_html_filename_from_url(url))
-        dirname = os.path.dirname(path)
+         
+        return path
 
-        os.makedirs(dirname, exist_ok=True)
+    async def _write_html_to_file(self, html: bytes, url: str, depth: int):
+        
+        path = self._get_html_filename(url, depth)
 
-        with open(path, 'wb') as html_file:
-            logging.info(f"Writing {url} to file {path}")
-            html_file.write(html)
-
-    def _get_html(self, url: str) -> bytes:
+        dirname = os.path.dirname(path) 
+        os.makedirs(dirname, exist_ok=True) # Creating missing parent directories
 
         try:
-            response = requests.get(url, verify=not self.ignore_ssl_verification)
+            async with aiofiles.open(path, 'wb') as html_file:
+                await html_file.write(html)
+                self._files_saved_counter += 1
+
+            logging.info(f"Wrote {url} to file {path}")
         except:
+            self._failed_files_saves_counter += 1
+            logging.info(f"Failed to Write {url} to file {path}")
+    
+    async def _get_html(self, url: str):
+       
+        try:
+            response = await AsyncHTMLSession().get(
+                url, verify=not self.ignore_ssl_verification, timeout=10)
+
+            html = response.content
+            self._scraped_urls.append(url)
+            self._pages_scraped_counter += 1
+            return html
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
             logging.info(f"Failed to scrape {url}.")
-            self._failed_counter += 1
+            self._failed_scrapes_counter += 1
+
             return None
 
-
-        return response.content
-
-    def _scrape(self, url, depth):
-
-
-        if depth > self._max_depth:
-            return
-        
-        scrapes_per_url = self._max_per_page
-
-        self._scraped_counter += 1
-        logging.info(f"Scraping {url} at depth {depth}")
-
-        # TODO: Arguments order not consistent
-        html = self._get_html(url)
-
-        if html is None:
-            return 
-
-        self._write_html_to_file(html, depth, url)
-
-        html_str = str(html)
-
-        self._result.append(
-            {
-                "depth": depth,
-                "data": html
-            }
-        )
-
-        sub_urls = self._extract_urls(html_str)
-
-        for sub_url in sub_urls:
-
-            if self._uniqueness == True and sub_url in self._scraped_urls:
-                continue
-
-            if scrapes_per_url == 0:
-                break
-
-            thread = threading.Thread(
-                target=self._scrape, args=[sub_url, depth+1])
-            self._threads.append(thread)
-            thread.start()
-
-            self._scraped_urls.append(sub_url)
-            scrapes_per_url-= 1
-
-    def _extract_urls(self, html: str, first_n=-1):
+    def _extract_urls(self, html: bytes, first_n=-1):
 
         urls = []
 
         for url_extractor in self._url_extractors:
-            urls += url_extractor().extract_urls(html, first_n)
+            urls += url_extractor().extract_urls(str(html), first_n)
 
         return urls
 
-    def scrape(self):
+    async def scrape(self):
 
-        main_thread = threading.Thread(target=self._scrape, args=[
-                                       self._root_url, 0])
-        self._threads.append(main_thread)
+        start = time.time()
 
-        main_thread.start()
+        current_depth_htmls = []
+        next_depth_htmls = []  # A list that will hold only one level for htmls in the depth
 
-        for thread in self._threads:
-            thread.join()
 
-        self._threads = []
-        result = self._result
-        self._result = []
+        url = self._root_url
+        response = await AsyncHTMLSession().get(url)
+        root_html = response.content
+        self._pages_scraped_counter += 1
 
-        logging.info(f"Scraped {self._scraped_counter} websites. Failed to scrape {self._failed_counter} ")
-        return result
+        next_depth_htmls.append(root_html)
+
+        depth = 1
+        while True:
+
+            if depth > self._scraping_depth:
+                break
+            
+            current_depth_htmls = next_depth_htmls
+            next_depth_htmls = []
+
+            tasks = []
+
+            for html in current_depth_htmls:
+
+                if html is None:
+                    continue
+
+                await self._write_html_to_file(html, url, depth)
+                
+                urls = []
+
+                if self._unique_urls_only == True:
+                    urls = SimpleAnchorHrefExtractor().extract_urls(str(html), self._scraping_width, self._scraped_urls)
+
+                else:
+                    urls = SimpleAnchorHrefExtractor().extract_urls(str(html), self._scraping_width)
+
+                for url in urls:
+                    tasks.append(self._get_html(url))
+                    logging.info(f"Scraped {url} at depth {depth}")
+
+
+            next_depth_htmls = await asyncio.gather(*tasks)
+            depth += 1
+
+        logging.info(
+            f"Scraped {self._pages_scraped_counter} websites. Failed to scrape {self._failed_scrapes_counter}. Wrote {self._files_saved_counter} files. Failed to save {self._failed_files_saves_counter}. Took {(time.time() - start)/self._pages_scraped_counter} per scrape")
