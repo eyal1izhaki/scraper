@@ -1,14 +1,13 @@
 import os
 import logging
 import requests
-from typing import List
 from requests_html import AsyncHTMLSession
 import time
 import asyncio
 import aiofiles
 
 from .url_extractors import SimpleAnchorHrefExtractor, RequestsHTMLLinksExtractor
-from .utils import get_html_filename_from_url
+from .utils import get_html_filename_from_url, async_get, async_write_to_file
 
 class Scraper:
 
@@ -46,11 +45,9 @@ class Scraper:
         dirname = os.path.dirname(path) 
         os.makedirs(dirname, exist_ok=True) # Creating missing parent directories
 
-        try:
-            async with aiofiles.open(path, 'wb') as html_file:
-                await html_file.write(html)
-                self._files_saved_counter += 1
-
+        try:    
+            await async_write_to_file(path, html)
+            self._files_saved_counter += 1
             logging.info(f"Wrote {url} to file {path}")
         except:
             self._failed_files_saves_counter += 1
@@ -59,18 +56,18 @@ class Scraper:
     async def _get_html(self, url: str):
 
         try:
-            response = await AsyncHTMLSession().get(
+            response = await async_get(
                 url, verify=not self.ignore_ssl_verification, timeout=10)
             
             html = response.content
             self._pages_scraped_counter += 1
             return html, url
 
-        except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
+        except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout, requests.exceptions.TooManyRedirects, requests.exceptions.InvalidURL):
             logging.info(f"Failed to scrape {url}.")
             self._failed_scrapes_counter += 1
 
-            return None
+            return None, None
 
     def _get_urls(self, html, first_n=-1):
         
@@ -94,7 +91,7 @@ class Scraper:
         next_depth_htmls = []  # A list that will hold only one level for htmls in the depth
 
         url = self._root_url
-        root_html = await self._get_html(url)
+        root_html, url = await self._get_html(url)
         self._scraped_urls.append(url)
         self._loop.create_task(self._write_html_to_file(root_html, url, 0))
 
