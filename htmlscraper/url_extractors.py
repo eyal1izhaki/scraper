@@ -2,7 +2,7 @@ import re
 
 class UrlExtractor:
     
-    def extract_urls(self, html, first_n):
+    def extract_urls(self, html):
         raise NotImplementedError()
 
     def validate(self):
@@ -11,7 +11,7 @@ class UrlExtractor:
 
 class SimpleAnchorHrefExtractor(UrlExtractor):
     
-    def extract_urls(self, html, first_n=-1, exclude_list=[]):
+    def extract_urls(self, html):
 
         a_href_regex = r'<a\s[^>]*href="(\s*http[^"]*)"[^>]*>'
 
@@ -19,13 +19,19 @@ class SimpleAnchorHrefExtractor(UrlExtractor):
 
         matches = list(set(matches))
 
-        if len(exclude_list) != 0:
+        return matches
+    
+class RequestsHTMLLinksExtractor(UrlExtractor):
 
-            unique_matches = []
-            for match in matches:
-                if match not in exclude_list:
-                    unique_matches.append(match)
-                
-            matches = unique_matches
+    def extract_urls(self, html):
 
-        return matches[:first_n]
+        links = list(html.absolute_links)
+
+        http_only = []
+
+        for link in links:
+            if link.startswith('http'):
+                http_only.append(link)
+            
+
+        return http_only
