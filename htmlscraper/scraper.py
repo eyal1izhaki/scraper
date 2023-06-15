@@ -1,12 +1,11 @@
 import os
 import logging
 import requests
-from requests_html import AsyncHTMLSession
 import time
 import asyncio
-import aiofiles
+import urllib3.exceptions
 
-from .url_extractors import SimpleAnchorHrefExtractor
+from .urls_extractors import SimpleAnchorHrefExtractor
 from .utils import get_html_filename_from_url, async_get, async_write_to_file
 
 class Scraper:
@@ -61,7 +60,7 @@ class Scraper:
             self._pages_scraped_counter += 1
             return html, url
 
-        except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout, requests.exceptions.TooManyRedirects, requests.exceptions.InvalidURL, requests.exceptions.MissingSchema):
+        except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout, requests.exceptions.TooManyRedirects, requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, urllib3.exceptions.LocationParseError):
             logging.info(f"Failed to scrape {url}.")
             self._failed_scrapes_counter += 1
 
@@ -71,13 +70,13 @@ class Scraper:
         
         if self._unique_urls_only == True:
             result = []
-            urls = SimpleAnchorHrefExtractor().extract_urls(parent_url, str(html))
+            urls = SimpleAnchorHrefExtractor().extract(parent_url, str(html))
             
             for url in urls:
                 if url not in self._scraped_urls:
                     result.append(url)
         else:
-            result = SimpleAnchorHrefExtractor().extract_urls(parent_url, str(html))
+            result = SimpleAnchorHrefExtractor().extract(parent_url, str(html))
 
         return result[:first_n]
 

@@ -1,22 +1,18 @@
 import re
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
-class UrlExtractor:
+class UrlsExtractor:
     
-    def extract_urls(self, html):
+    def extract(self, html):
         raise NotImplementedError()
 
-    def validate(self):
-        pass
+class SimpleAnchorHrefExtractor(UrlsExtractor):
 
-class SimpleAnchorHrefExtractor(UrlExtractor):
-
-    def extract_urls(self, parent_url, html):
+    def extract(self, parent_url, html):
 
         a_href_regex = r'<a\s[^>]*href="(\s*(http|\/)[^"]*)"[^>]*>' # finds relative and absolute links in <a href>
 
         matches = re.findall(a_href_regex, html)
-        matches = list(set(matches)) # Remove duplicates
 
         result = []
 
