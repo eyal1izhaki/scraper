@@ -6,7 +6,8 @@ import asyncio
 import urllib3.exceptions
 
 from .urls_extractors import SimpleAnchorHrefExtractor
-from .utils import get_html_filename_from_url, async_get, async_write_to_file
+from .utils import generate_filename_from_url, async_get, async_write_to_file
+from .html import ScrapedHTML
 
 class Scraper:
 
@@ -31,7 +32,7 @@ class Scraper:
     def _get_html_filename(self, url: str, depth):
 
         path = os.path.join(self._data_dir, str(
-            depth), get_html_filename_from_url(url))
+            depth), generate_filename_from_url(url))
          
         return path
 
@@ -87,12 +88,14 @@ class Scraper:
         current_depth_htmls = []
         next_depth_htmls = []  # A list that will hold only one level for htmls in the depth
 
+        
         url = self._root_url
-        root_html, root_url = await self._get_html(url)
+        scraped_html = ScrapedHTML(url, depth=0)
+        await scraped_html.retrieve_data(self.ignore_ssl_verification)
         self._scraped_urls.append(url)
-        asyncio.create_task(self._write_html_to_file(root_html, url, 0))
+        # scraped_html.save_as_file_task(save_to=self._data_dir)
 
-        next_depth_htmls.append((root_html, root_url))
+        next_depth_htmls.append(scraped_html)
 
         depth = 1
         disk_tasks = []
@@ -107,34 +110,36 @@ class Scraper:
             next_depth_htmls = []
 
             network_tasks = []
-            for html, parent_url in current_depth_htmls:
+            for scraped_html in current_depth_htmls:
 
-                if html is None:
+                if scraped_html is None:
                     continue
 
-                urls = self._get_urls(parent_url, html, self._scraping_width)
+                urls = scraped_html.links[:self._scraping_width]
 
                 for url in urls:
+                    sub_html = ScrapedHTML(url, depth)
+                    next_depth_htmls.append(sub_html)
                     self._scraped_urls.append(url)
-                    network_task = asyncio.create_task(self._get_html(url))
-                    network_tasks.append(network_task)
+
+                    network_tasks.append(sub_html.retrieve_data_task(self.ignore_ssl_verification))
+
                     logging.info(f"Scraped {url} at depth {depth}")
 
+            await asyncio.gather(*network_tasks)
 
-            next_depth_htmls = await asyncio.gather(*network_tasks)
+            # for scraped_html in next_depth_htmls:
+                
+            #     if scraped_html is None:
+            #         continue
 
-            for html, url in next_depth_htmls:
-
-                if html is None:
-                    continue
-
-                disk_task = asyncio.create_task(self._write_html_to_file(html, url, depth))
-                disk_tasks.append(disk_task)
+            #     disk_task = scraped_html.save_as_file_task(save_to=self._data_dir)
+            #     disk_tasks.append(disk_task)
             
             depth += 1
 
         for task in disk_tasks:
             await task
 
-        print(
-            f"Scraped {self._pages_scraped_counter} websites. Failed to scrape {self._failed_scrapes_counter}. Wrote {self._files_saved_counter} files. Failed to save {self._failed_files_saves_counter}. Took {(time.time() - start)/self._pages_scraped_counter} per scrape")
+        # print(
+        #     f"Scraped {self._pages_scraped_counter} websites. Failed to scrape {self._failed_scrapes_counter}. Wrote {self._files_saved_counter} files. Failed to save {self._failed_files_saves_counter}. Took {(time.time() - start)/self._pages_scraped_counter} per scrape")
