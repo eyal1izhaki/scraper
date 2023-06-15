@@ -1,0 +1,2 @@
+class MissingContent(Exception):
+    pass
