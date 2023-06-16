@@ -4,21 +4,9 @@ import requests
 import time
 import asyncio
 import urllib3.exceptions
-from multiprocessing import Process
-import uuid
 
 from .urls_extractors import SimpleAnchorHrefExtractor
 from .utils import get_html_filename_from_url, async_get, async_write_to_file
-
-
-def write_htmls(htmls):
-    loop = asyncio.get_event_loop()
-    tasks = []
-    for html, _ in htmls:
-        task = loop.create_task(async_write_to_file(f'C:/Users/eyal1izhaki/Documents/code/scraper-task/temp/{uuid.uuid4()}.html', html))
-        tasks.append(task)
-    
-    asyncio.gather(*tasks)
 
 class Scraper:
 
@@ -94,7 +82,6 @@ class Scraper:
 
     async def scrape(self):
 
-        processes = []
         start = time.time()
 
         current_depth_htmls = []
@@ -136,24 +123,18 @@ class Scraper:
 
             next_depth_htmls = await asyncio.gather(*network_tasks)
 
-            p = Process(target=write_htmls, args=[next_depth_htmls])
-            p.start()
-            processes.append(p)
-            # for html, url in next_depth_htmls:
+            for html, url in next_depth_htmls:
 
-            #     if html is None:
-            #         continue
+                if html is None:
+                    continue
 
-            #     disk_task = asyncio.create_task(self._write_html_to_file(html, url, depth))
-            #     disk_tasks.append(disk_task)
+                disk_task = asyncio.create_task(self._write_html_to_file(html, url, depth))
+                disk_tasks.append(disk_task)
             
             depth += 1
 
-        # for task in disk_tasks:
-        #     await task
-
-        for p in processes:
-            p.join()
+        for task in disk_tasks:
+            await task
 
         print(
             f"Scraped {self._pages_scraped_counter} websites. Failed to scrape {self._failed_scrapes_counter}. Wrote {self._files_saved_counter} files. Failed to save {self._failed_files_saves_counter}. Took {(time.time() - start)/self._pages_scraped_counter} per scrape")
