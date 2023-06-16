@@ -7,7 +7,6 @@ import requests
 from htmlscraper.scraper import Scraper
 # from htmlscraper.scraper_threads import Scraper
 import asyncio
-from requests_html import AsyncHTMLSession
 
 import time
 
