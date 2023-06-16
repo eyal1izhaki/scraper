@@ -25,9 +25,14 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 scraper = Scraper('https://www.ynetnews.com/', scraping_depth=4, scraping_width=8, unique_urls_only=True,
                   data_dir='C:/Users/eyal1izhaki/Documents/code/scraper-task/scraped_data', ignore_ssl_verification=True)
 
-start = time.time()
-try:
-    asyncio.run(scraper.scrape())
 
-except KeyboardInterrupt:
-    print(f"Ctrl C Pressed took {time.time - start}")
+
+
+if __name__ == "__main__":
+    
+    start = time.time()
+    try:
+        asyncio.run(scraper.scrape())
+
+    except KeyboardInterrupt:
+        print(f"Ctrl C Pressed took {time.time - start}")
