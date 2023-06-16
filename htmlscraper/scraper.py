@@ -4,6 +4,7 @@ import requests
 import time
 import asyncio
 import urllib3.exceptions
+import concurrent.futures
 
 from .urls_extractors import SimpleAnchorHrefExtractor
 from .utils import get_html_filename_from_url, async_get, async_write_to_file
@@ -35,18 +36,19 @@ class Scraper:
          
         return path
 
-    async def _write_html_to_file(self, html: bytes, url: str, depth: int):
-
+    def _write_html_to_file(self, html: bytes, url: str, depth: int):
         path = self._get_html_filename(url, depth)
 
         dirname = os.path.dirname(path) 
         os.makedirs(dirname, exist_ok=True) # Creating missing parent directories
 
         try:    
-            await async_write_to_file(path, html)
+            with open(path, 'wb') as file:
+                file.write(html)
+
             self._files_saved_counter += 1
             logging.info(f"Wrote {url} to file {path}")
-        except ValueError:
+        except:
             self._failed_files_saves_counter += 1
             logging.info(f"Failed to Write {url} to file {path}")
     
@@ -89,15 +91,14 @@ class Scraper:
         if html is None:
             return []
         
-        task = asyncio.create_task(self._write_html_to_file(html, url, depth))
-        # await self._write_html_to_file(html, url, depth)
-
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            await asyncio.get_event_loop().run_in_executor(
+            pool, self._write_html_to_file, html, url, depth)
+            
         if not should_extract_urls:
             return []
         
         extracted_urls = self._get_urls(url, html, self._scraping_width)
-
-        await task
 
         return extracted_urls
 
