@@ -25,7 +25,7 @@ class Scraper:
         self._files_saved_counter = 0
         self._failed_scrapes_counter = 0
 
-        self._scraped_urls = []  # For unique urls functionality
+        self._visited_urls = []  # For unique urls functionality
 
 
     def _get_html_filename(self, url: str, depth):
@@ -73,7 +73,9 @@ class Scraper:
             urls = SimpleAnchorHrefExtractor().extract(parent_url, str(html))
             
             for url in urls:
-                if url not in self._scraped_urls:
+                
+                if url not in self._visited_urls:
+                    self._visited_urls.append(url)
                     result.append(url)
         else:
             result = SimpleAnchorHrefExtractor().extract(parent_url, str(html))
@@ -89,7 +91,7 @@ class Scraper:
 
         url = self._root_url
         root_html, root_url = await self._get_html(url)
-        self._scraped_urls.append(url)
+        self._visited_urls.append(url)
         asyncio.create_task(self._write_html_to_file(root_html, url, 0))
 
         next_depth_htmls.append((root_html, root_url))
@@ -115,7 +117,6 @@ class Scraper:
                 urls = self._get_urls(parent_url, html, self._scraping_width)
 
                 for url in urls:
-                    self._scraped_urls.append(url)
                     network_task = asyncio.create_task(self._get_html(url))
                     network_tasks.append(network_task)
                     logging.info(f"Scraped {url} at depth {depth}")
