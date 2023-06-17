@@ -113,7 +113,9 @@ class Scraper:
        
         depth = 0
 
-        while depth > self._scraping_depth:
+        while depth <= self._scraping_depth:
+
+            logging.info(f"Scraping {len(next_depth_urls)} htmls at level {depth}")
             
             #TODO: Find more elegant way to perform this
             should_extract_urls = depth < self._scraping_depth
