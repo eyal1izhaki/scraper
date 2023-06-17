@@ -129,7 +129,7 @@ class Scraper:
                 task = asyncio.create_task(self._complete_scrape_task(url, depth, should_extract_urls))
                 tasks.append(task)
 
-
+ 
             extracted_urls_arrays = await asyncio.gather(*tasks)
             
             next_depth_urls = [url for extracted_urls_array in extracted_urls_arrays for url in extracted_urls_array]
