@@ -49,7 +49,8 @@ class Scraper:
 
             self._files_saved_counter += 1
             logging.debug(f"Wrote {url} to file {path}")
-        except:
+
+        except OSError: # Failed probably due to filename too long
             self._failed_files_saves_counter += 1
             logging.debug(f"Failed to Write {url} to file {path}")
 
