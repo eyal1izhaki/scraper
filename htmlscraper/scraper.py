@@ -71,18 +71,20 @@ class Scraper:
 
     def _get_urls(self, parent_url, html, first_n=-1):
         
+        urls = SimpleAnchorHrefExtractor().extract(parent_url, str(html))
+
         if self._unique_urls_only == True:
-            result = []
-            urls = SimpleAnchorHrefExtractor().extract(parent_url, str(html))
-            
+
+            filtered_urls = []
+
             for url in urls:
                 if url not in self._visited_urls:
                     self._visited_urls.append(url)
-                    result.append(url)
-        else:
-            result = SimpleAnchorHrefExtractor().extract(parent_url, str(html))
+                    filtered_urls.append(url)
 
-        return result[:first_n]
+            return filtered_urls[:first_n]
+
+        return urls[:first_n]
 
     async def _complete_scrape_task(self, url, depth, should_extract_urls=True):
 
