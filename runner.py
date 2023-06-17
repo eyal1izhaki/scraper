@@ -1,30 +1,25 @@
+import logging
+import requests
+import asyncio
+import time
+import json
+
 from htmlscraper.scraper import Scraper
 from htmlscraper.urls_extractors import SimpleAnchorHrefExtractor
-import logging
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-import requests
-# from htmlscraper.scraper2 import Scraper
 from htmlscraper.scraper import Scraper
-# from htmlscraper.scraper_threads import Scraper
-import asyncio
 
-import time
 
-# Disable SSL verification
+
+# Disable warnings about insecure requests when ignore_ssl_verification is set to true
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-# logging.basicConfig(level=logging.INFO)
 
-# scraper = Scraper('https://www.ynetnews.com/', scraping_depth=7, scraping_width=3, unique_urls_only=True,
-#                   data_dir='C:/Users/eyal1izhaki/Documents/code/scraper-task/scraped_data',
-#                   url_extractors=[SimpleAnchorHrefExtractor], ignore_ssl_verification=False)
-
-# scraper.scrape_to_fs()
+with open('config.json') as config_file:
+    config = json.loads(config_file.read())
 
 scraper = Scraper('https://www.ynetnews.com/', scraping_depth=4, scraping_width=8, unique_urls_only=True,
-                  data_dir='C:/Users/eyal1izhaki/Documents/code/scraper-task/scraped_data', ignore_ssl_verification=True)
-
-
+                  data_dir=config["data_dir"], ignore_ssl_verification=True)
 
 
 if __name__ == "__main__":
