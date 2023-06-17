@@ -34,7 +34,6 @@ class SimpleAnchorHrefExtractor(UrlsExtractor):
                 result.append(url)
 
             else: # Not a valid url
-                print(url)
                 continue
 
         return result

@@ -11,9 +11,9 @@ from .utils import get_html_filename_from_url, async_get, async_write_to_file
 
 class Scraper:
 
-    def __init__(self, url: str, scraping_depth: int, scraping_width: int, unique_urls_only: bool, data_dir: str, ignore_ssl_verification=False) -> None:
+    def __init__(self, root_url: str, scraping_depth: int, scraping_width: int, unique_urls_only: bool,data_dir: str, ignore_ssl_verification=False) -> None:
 
-        self._root_url = url
+        self._root_url = root_url
         self._scraping_depth = scraping_depth
         self._scraping_width = scraping_width
         self._unique_urls_only = unique_urls_only
@@ -47,10 +47,10 @@ class Scraper:
                 file.write(html)
 
             self._files_saved_counter += 1
-            logging.info(f"Wrote {url} to file {path}")
+            logging.debug(f"Wrote {url} to file {path}")
         except:
             self._failed_files_saves_counter += 1
-            logging.info(f"Failed to Write {url} to file {path}")
+            logging.debug(f"Failed to Write {url} to file {path}")
     
     async def _get_html(self, url: str):
 
@@ -60,11 +60,11 @@ class Scraper:
             
             html = response.content
             self._pages_scraped_counter += 1
-            logging.info(f"Scraped {url}.")
+            logging.debug(f"Scraped {url}.")
             return html, url
 
         except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout, requests.exceptions.TooManyRedirects, requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, urllib3.exceptions.LocationParseError):
-            logging.info(f"Failed to scrape {url}.")
+            logging.debug(f"Failed to scrape {url}.")
             self._failed_scrapes_counter += 1
 
             return None, None
@@ -112,31 +112,25 @@ class Scraper:
         next_depth_urls = [self._root_url]
        
         depth = 0
-        
-        while True:
 
-            if depth > self._scraping_depth:
-                break
-
+        while depth > self._scraping_depth:
+            
+            #TODO: Find more elegant way to perform this
             should_extract_urls = depth < self._scraping_depth
             
-            print(depth)
-
             current_urls = next_depth_urls
             next_depth_urls = []
 
             tasks = []
             for url in current_urls:
-
                 task = asyncio.create_task(self._complete_scrape_task(url, depth, should_extract_urls))
                 tasks.append(task)
 
- 
             extracted_urls_arrays = await asyncio.gather(*tasks)
             
             next_depth_urls = [url for extracted_urls_array in extracted_urls_arrays for url in extracted_urls_array]
 
             depth += 1
 
-        print(
+        logging.info(
             f"Scraped {self._pages_scraped_counter} websites. Failed to scrape {self._failed_scrapes_counter}. Wrote {self._files_saved_counter} files. Failed to save {self._failed_files_saves_counter}. Took {(time.time() - start)/self._pages_scraped_counter} per scrape")
