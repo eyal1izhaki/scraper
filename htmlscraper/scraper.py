@@ -7,7 +7,7 @@ import urllib3.exceptions
 import concurrent.futures
 
 from .urls_extractors import SimpleAnchorHrefExtractor
-from .utils import get_html_filename_from_url, async_get, async_write_to_file
+from .utils import get_html_filename_from_url, async_get
 
 class Scraper:
 

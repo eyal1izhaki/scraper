@@ -27,15 +27,3 @@ def get_html_filename_from_url(url: str):
 
 async def async_get(url, *args, **kwargs):
     return await asyncio.to_thread(requests.get, url, *args, **kwargs)
-
-async def async_write_to_file(path: str, content: bytes):
-
-    def sync_write():
-        try:
-            with open(path, 'wb') as file:
-                file.write(content)
-        except:
-            pass
-
-    return await asyncio.to_thread(sync_write)
-    
