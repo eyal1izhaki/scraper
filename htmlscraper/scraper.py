@@ -9,6 +9,7 @@ from typing import List
 
 from .urls_extractors import SimpleAnchorHrefExtractor
 from .utils import get_html_filename_from_url, async_get
+from .exceptions import FailedToScrape
 
 
 class Scraper:
@@ -83,24 +84,21 @@ class Scraper:
             self._failed_files_writes_counter += 1
             logging.debug(f"Failed to Write {url} to file {path}")
 
-    #TODO: This method should return only the HTML and not the URL too.
-    async def _get_html(self, url: str) -> tuple[bytes, str] | tuple[None, None]:
+    async def _get_html(self, url: str) -> bytes | None:
         """Sends a GET request to a given url and returns the responded HTML.
 
         Args:
             url (str): URL to send the request to.
 
+        Raises:
+            FailedToScrape: Raised when async_get fails to get the requested HTML
+
         Returns:
-            tuple[bytes, str] | tuple[None, None]: The scraped HTML and its URL.
+            bytes: Scraped HTML or None when fails to scrape
         """
         try:
             response = await async_get(
                 url, verify=not self.ignore_ssl_verification, timeout=10)
-
-            html = response.content
-            self._scraped_htmls_counter += 1
-            logging.debug(f"Scraped {url}.")
-            return html, url
 
         except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout,
                 requests.exceptions.TooManyRedirects, requests.exceptions.InvalidURL,
@@ -108,8 +106,13 @@ class Scraper:
 
             logging.debug(f"Failed to scrape {url}.")
             self._failed_scrapes_counter += 1
+            return None
+    
+        html = response.content
+        self._scraped_htmls_counter += 1
+        logging.debug(f"Scraped {url}.")
+        return html
 
-            return None, None
 
     def _get_urls(self, parent_url: str, html: bytes, first_n=-1) -> List[str]:
         """Extracts urls from a given HTML using URLExtractors
@@ -152,7 +155,10 @@ class Scraper:
             List[str]: List of extracted URLs
         """
 
-        html, url = await self._get_html(url)
+        html = await self._get_html(url)
+
+        if html is None:
+            return []
 
         if html is None:
             return []
