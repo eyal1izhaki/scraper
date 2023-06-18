@@ -64,7 +64,7 @@ def main():
         ignore_ssl_verification=args.ignore_ssl_verification
     )
 
-    asyncio.run(scraper.scrape())
+    asyncio.run(scraper.start_scrape())
 
 
 if __name__ == '__main__':
