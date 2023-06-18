@@ -185,7 +185,6 @@ class Scraper:
             logging.info(
                 f"Scraping {len(next_depth_urls)} htmls at level {depth}")
 
-            # TODO: Find more elegant way to perform this
             should_extract_urls = depth < self._scraping_depth
 
             current_urls = next_depth_urls
