@@ -5,7 +5,7 @@ import time
 import asyncio
 import urllib3.exceptions
 import concurrent.futures
-from typing import List
+from typing import List, Awaitable
 
 from .urls_extractors import SimpleAnchorHrefExtractor
 from .utils import get_html_filename_from_url, async_get
@@ -141,8 +141,7 @@ class Scraper:
 
         return urls[:first_n]
 
-    # TODO: Change method name, Name of the function not suggesting that it returns extracted urls array
-    async def _complete_scrape_task(self, url: str, depth: int, should_extract_urls=True) -> List[str]:
+    async def _scrape_task(self, url: str, depth: int, should_extract_urls=True) -> List[str]:
         """Performs a complete scraping task. Gets the HTML, extract te URLs from it and Saves
         the HTML to the disk
 
@@ -160,9 +159,6 @@ class Scraper:
         if html is None:
             return []
 
-        if html is None:
-            return []
-
         with concurrent.futures.ThreadPoolExecutor() as pool: # Performing writes in a different thread
             await asyncio.get_event_loop().run_in_executor(
                 pool, self._write_html_to_file, html, url, depth)
@@ -174,7 +170,7 @@ class Scraper:
 
         return extracted_urls
 
-    async def scrape(self) -> None:
+    async def start_scrape(self) -> None:
         """Start the scraping process"""
 
         start = time.time()
@@ -198,7 +194,7 @@ class Scraper:
             tasks = []
             for url in current_urls:
                 task = asyncio.create_task(
-                    self._complete_scrape_task(url, depth, should_extract_urls))
+                    self._scrape_task(url, depth, should_extract_urls))
                 tasks.append(task)
 
             extracted_urls_arrays = await asyncio.gather(*tasks)
