@@ -13,3 +13,5 @@ Flags:
 -u - Scrape uniqe URLs only.
 
 -v - Enable verbose mode.
+
+For few more flags, run `python scraper.py --help`
