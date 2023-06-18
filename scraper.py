@@ -2,7 +2,6 @@ import argparse
 import logging
 import urllib
 import asyncio
-import os
 import requests
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
