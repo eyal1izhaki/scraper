@@ -6,9 +6,9 @@ Instructions:
 
 Flags:
 
--l - Level. How deep to scrape
+-l - Level. How deep to scrape.
 
--w - Width. How many urls to extract from each HTML
+-w - Width. How many urls to extract from each HTML.
 
 -u - Scrape uniqe URLs only.
 
