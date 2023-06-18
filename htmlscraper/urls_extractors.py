@@ -1,16 +1,35 @@
 import re
 from urllib.parse import urlparse
+from typing import List
 
+class URLExtractor:
+    """Class the inherit from, in order to write custom Extractor"""
 
-class UrlsExtractor:
+    def extract(self, html: str):
+        """Extracts urls from a given html string.
 
-    def extract(self, html):
+        Args:
+            html (str): HTML string to extract urls from.
+
+        Raises:
+            NotImplementedError: Inherit classes need to implement the logic of extracting the urls
+        """
         raise NotImplementedError()
 
 
-class SimpleAnchorHrefExtractor(UrlsExtractor):
+class SimpleAnchorHrefExtractor(URLExtractor):
+    """URL Extractor that extract urls inside href attribute of Anchor HTML element"""
 
-    def extract(self, parent_url, html):
+    def extract(self, parent_url: str, html: str) -> List[str]:
+        """Extracts urls from a given html string.
+
+        Args:
+            parent_url (str): URL of the given html. Used to convert relative urls to absolute ones.
+            html (str): HTML string to extract urls from.
+
+        Returns:
+            List[str]: List of extracted urls
+        """
 
         # finds relative and absolute links in <a href>
         a_href_regex = r'<a\s[^>]*href="(\s*(http|\/)[^"]*)"[^>]*>'
@@ -21,7 +40,7 @@ class SimpleAnchorHrefExtractor(UrlsExtractor):
 
         for match in matches:
 
-            url = match[0].strip()
+            url = match[0].strip() # Removes prefix and suffix spaces
 
             if url.startswith('/') and not url.startswith('//'):  # starts with one /
                 parsed_url = urlparse(parent_url)
