@@ -5,11 +5,10 @@ import time
 import asyncio
 import urllib3.exceptions
 import concurrent.futures
-from typing import List, Awaitable
+from typing import List
 
 from .urls_extractors import SimpleAnchorHrefExtractor
 from .utils import get_html_filename_from_url, async_get
-from .exceptions import FailedToScrape
 
 
 class Scraper:
